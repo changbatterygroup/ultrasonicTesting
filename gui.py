@@ -1,4 +1,4 @@
-from PyQt5.QtGui import QDoubleValidator, QIntValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QDialogButtonBox, QVBoxLayout, QMainWindow, QGridLayout,  QStackedWidget, QWidget, QLabel, QCheckBox, QComboBox, QPushButton, QLineEdit
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -10,10 +10,11 @@ import ultrasonicScan as scan
 import multiscan
 import repeatPulse
 import scanner as sc
-from serial import SerialException
+# from serial import SerialException
 import time
 import os
 import json
+import math
 
 # A simple PyQt GUI for running ultrasound experiments
 # Gathers user inputs and then runs the correct experiment function. Also used to setup new instrument with the Setup
@@ -45,7 +46,7 @@ class MainWindow(QMainWindow):
 
         # add widgets to stackedwidget in order defined by windowIndices
         # note that a filler temp widget is created for the experiment window since that needs to be made after the parameters are chosen
-        self.mainWidget = QStackedWidget()
+        self.mainWidget = QStackedWidget(self)
         self.mainWidget.insertWidget(self.windowIndices['init'],self.initWindow())
         self.mainWidget.insertWidget(self.windowIndices['move'], self.moveWindow())
         self.mainWidget.insertWidget(self.windowIndices['pulse'], self.pulseWindow())
@@ -64,8 +65,7 @@ class MainWindow(QMainWindow):
 
         # this is done after setting up the initial page so a warning dialog can properly display on top
         self.readSetupJSON()
-
-
+        
     ################################################################################
     ################ NEXT BUTTON CONTROL FLOW ######################################
     #################################################################################
@@ -84,73 +84,90 @@ class MainWindow(QMainWindow):
 
             if self.experimentType == 'Repeat Pulse Measurement':
                 self.switchWindow('pulse')
+                self.scaleText()
 
             elif self.experimentType == 'Setup':
                 self.switchWindow('scannerSetup')
+                self.scaleText()
 
             else:
                 self.switchWindow('move')
+                self.scaleText()
 
         # next handle changes from move window
         elif self.windowType == 'move':
 
             if self.experimentType == 'Move':
                 self.switchWindow('init')
+                self.scaleText()
 
             # in all other cases, go to pulse menu
             else:
                 self.switchWindow('pulse')
+                self.scaleText()
 
         elif self.windowType == 'pulse':
 
             if self.experimentType == 'Single Pulse Measurement':
                 self.switchWindow('init')
+                self.scaleText()
 
             # this is the end of the setup experiment so the results must be recorded in set_parameters.json
             elif self.experimentType == 'Setup':
                 self.writeSetupJSON()
                 self.WarningDialog("Updated setup_parameters.json with setup results.")
                 self.switchWindow('init')
+                self.scaleText()
 
             elif self.experimentType == 'Single Scan':
                 self.switchWindow('scan')
+                self.scaleText()
 
             else:
                 self.switchWindow('time')
+                self.scaleText()
 
         elif self.windowType == 'time':
 
             if self.experimentType == 'Repeat Pulse Measurement':
                 self.switchWindow('save')
+                self.scaleText()
 
             else:
                 self.switchWindow('scan')
+                self.scaleText()
 
         elif self.windowType == 'scan':
 
             self.switchWindow('save')
+            self.scaleText()
 
         elif self.windowType == 'save':
 
             self.switchWindow('experiment')
+            self.scaleText()
 
         # setup window progression
         elif self.windowType == 'scannerSetup':
 
             self.switchWindow('homing')
+            self.scaleText()
 
         elif self.windowType == 'homing':
 
             self.switchWindow('dimensions')
+            self.scaleText()
 
         elif self.windowType == 'dimensions':
 
             self.switchWindow('pulse')
+            self.scaleText()
 
         # all unhandled cases (including experiment) go back to the init window
         else:
 
             self.switchWindow('init')
+            self.scaleText()
 
     ####################################################################################
     ############### WINDOW DEFINITIONS #################################################
@@ -160,32 +177,45 @@ class MainWindow(QMainWindow):
 
     # init window is where experiment type is specified
     def initWindow(self):
-
+        
         self.experimentSelect = QComboBox()
         self.experimentSelect.addItems(
             ["Move", "Single Pulse Measurement", "Repeat Pulse Measurement", "Single Scan", "Multiple Scans", "Setup"])
+        
         self.experimentSelectLabel = QLabel("Select Experiment Type: ")
-        # self.input.textChanged.connect(self.label.setText)
-
+        self.experimentSelectLabel.setStyleSheet("background-color: lightgreen; border: 1px solid black; padding: 0px; font-size: 20px;")
+        self.experimentSelectLabel.setFixedHeight(10)
+        
         self.nextButtonInit = QPushButton("Next")
         self.nextButtonInit.clicked.connect(self.nextButtonClicked)
 
         layout = QGridLayout()
+        # layout.setSpacing(0)
         layout.addWidget(self.experimentSelectLabel, 0, 0)
-        layout.addWidget(self.experimentSelect, 0, 1)
-        layout.addWidget(self.nextButtonInit, 1, 1)
+        layout.addWidget(self.experimentSelect, 1, 0)
+        layout.addWidget(self.nextButtonInit, 2, 1)
+        
+        # for row in range(3):
+        #     for col in range(3):
+        #         label = QLabel(f"Item {row},{col}", self)
+        #         label.setStyleSheet("background-color: lightgreen; border: 1px solid black;")
+        #         layout.addWidget(label, row, col)
+
 
         widget = QWidget()
         widget.setLayout(layout)
-
+        
+       
         return widget
 
     # move window specifies move parameters
     def moveWindow(self):
-
+        
         self.moveLabel = QLabel("Define movement parameters:")
-
+        self.moveLabel.setStyleSheet("background-color: lightgreen; border: 1px solid black")
+        
         self.moveAxisLabel = QLabel("Axis: ")
+        self.moveAxisLabel.setStyleSheet("background-color: lightgreen; border: 1px solid black")
         self.moveAxis = QComboBox()
         self.moveAxis.addItems(['X', 'Y', 'Z'])
         self.moveAxisLabel.setToolTip("Axis to move scanner. X is left to right, Y moves the stage back and forth, Z moves up and down")
@@ -203,14 +233,15 @@ class MainWindow(QMainWindow):
         self.nextButtonMove.clicked.connect(self.nextButtonClicked)
 
         layout = QGridLayout()
-        layout.addWidget(self.moveLabel, 0,0)
-        layout.addWidget(self.moveAxisLabel, 1, 0)
-        layout.addWidget(self.moveAxis, 1, 1)
-        layout.addWidget(self.distanceLabel, 2, 0)
-        layout.addWidget(self.distance, 2, 1)
-        layout.addWidget(self.moveButtonLabel, 3, 0)
-        layout.addWidget(self.moveButton, 3, 1)
-        layout.addWidget(self.nextButtonMove, 4, 1)
+        layout.setVerticalSpacing(0)
+        layout.addWidget(self.moveLabel, 1, 0,)
+        layout.addWidget(self.moveAxisLabel, 2, 0)
+        layout.addWidget(self.moveAxis, 2, 1)
+        layout.addWidget(self.distanceLabel, 3, 0)
+        layout.addWidget(self.distance, 3, 1)
+        layout.addWidget(self.moveButtonLabel, 4, 0)
+        layout.addWidget(self.moveButton, 4, 1)
+        layout.addWidget(self.nextButtonMove, 5, 1)
 
         widget = QWidget()
         widget.setLayout(layout)
@@ -221,7 +252,7 @@ class MainWindow(QMainWindow):
     # pulse window specifies scope and pulser paramters
     #TODO: add collectionMode widget as a QComboBox(v)
     def pulseWindow(self):
-
+        
         if self.experimentType == 'Setup':
             self.pulseLabel = QLabel("Connect transducers, transducer holder, pulser, and oscilloscope.\n"
                                      "Run a test pulse to verify the pulser and oscilloscope connection.")
@@ -716,7 +747,36 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
 
         return widget
+    
+    ### TEXT RESIZING WITH WINDOW RESIZING
+    
+    def resizeEvent(self, event):
+        self.scaleText()
+        super().resizeEvent(event)
 
+    def scaleText(self):
+        
+        screen_width, screen_height = get_screen_dimensions()
+        
+        # Define the threshold dimensions
+        max_width_threshold = 0.75 * screen_width  # Set your minimum width threshold here
+        max_height_threshold = 0.75 * screen_height  # Set your minimum height threshold here
+
+        # Check if the window dimensions exceed the thresholds
+        if self.width() > max_width_threshold or self.height() > max_height_threshold:
+            return  # Do not scale text if window is smaller than the thresholds
+        
+        # Calculate font size based on window dimensions
+        window_width = self.width()
+        window_height = self.height()
+            
+        # Example: Set font size proportional to window size
+        font_size = min(window_width, window_height) // 30  # Adjust the divisor as needed
+        font = QFont('Arial', font_size)
+            
+        # Apply font to all relevant widgets in the current windowI
+        self.mainWidget.currentWidget().setFont(font)
+        
 
     #########################################################################
     ################# DIALOG BOXES #########################################
@@ -1168,3 +1228,8 @@ def startGUI(params : dict):
 
     app.exec_()
 
+def get_screen_dimensions():
+        screen = QApplication.primaryScreen().geometry()
+        screen_width = screen.width()
+        screen_height = screen.height()
+        return screen_width, screen_height
