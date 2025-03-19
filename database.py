@@ -211,7 +211,7 @@ class Database:
         query, vals = self.parseQuery(dataDict, table)
         self.write(query, vals)
 
-
+# vandalism 2
 
 
         #Fatima was here
