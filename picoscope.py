@@ -12,6 +12,8 @@
 #   "openUnit" - a dict containing the picoscope status returns
 # todo: organize functions! this file has grown quite a bit and needs some overall organizing
 
+# VANDALISM
+
 import ctypes
 from time import sleep
 from picosdk.ps2000a import ps2000a as ps
