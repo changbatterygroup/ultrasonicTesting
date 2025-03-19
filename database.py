@@ -210,3 +210,8 @@ class Database:
 
         query, vals = self.parseQuery(dataDict, table)
         self.write(query, vals)
+
+
+
+
+        #Fatima was here
