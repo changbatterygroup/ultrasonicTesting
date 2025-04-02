@@ -4,8 +4,6 @@ import io
 import time
 import os
 
-#vandalism
-
 # Class for creating/saving into SQlite Database during ultrasound experiments
 # Contains functions for initializing databases, saving experimental parameters, and reformatting/saving data from dictionaries
 class Database:
