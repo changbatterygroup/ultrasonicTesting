@@ -24,6 +24,8 @@ import json
 # Code is divided into sections: Main Window, Next Button, Window Definition functions, Setup Windows subsection,
 #   Dialog Boxes, Helper Functions (for switching windows and reading JSON files with parameters), and experiment functions
 
+#here is another change
+
 ################################################################################
 ############### Main Window ###################################################
 ##############################################################################
