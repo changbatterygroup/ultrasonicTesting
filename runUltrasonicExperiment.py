@@ -14,10 +14,12 @@ import gui
 #
 # 3) run this script. On PyCharm, simply pless Shift + F10 or click the green play button at the top right
 
+# NO THANK YOU
 
+# yes please
 experimentParams = {
     # If you want to use the GUI, simply set 'gui' : True and the program will guide you through the rest of the setup
-    'gui' : True,
+    'gui' : False,
 
     # What do you want to do?
     #'move' = move the transducers
