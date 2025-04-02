@@ -44,6 +44,7 @@ import csv
 ############## Saving, Loading, Manipulating Data##########################
 ############################################################################
 
+# VANDALISM
 # Convert sqlite database
 # Inputs a filename with .sqlite3 extension
 # Creates a data dict and saves it as the same filename .pickle
