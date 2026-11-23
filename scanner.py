@@ -68,7 +68,7 @@ class Scanner():
     # Inputs the axis of motion as a string ('X','Y', or 'Z'), and the distance to move (in mm) (can be negative)
     #   Also an optional checkMoveSafety flag which should always be set to true unless debugging a scanner that has not been homed
     # function translates the movement to GCode and passes it to the scanner
-    def move(self, axis : str, distance, checkMoveSafety = True):
+    def move(self, axis : str, distance, checkMoveSafety = False):
 
         if not self.validAxisQ(axis):
             raise ValueError('Input axis is not \'X\', \'Y\', or \'Z\'')
@@ -81,7 +81,7 @@ class Scanner():
         upperAxis = axis.upper()
 
         # Convert axis and distance inputs into the proper GCode
-        motionCommand = "G1 " + upperAxis + str(distance)
+        motionCommand = "G1 " + upperAxis + str(distance) # TODO: modify feed rate (ex F100) so scanner can move faster for longer distances too
 
         # Set ender units to millimeters
         unitRes = self.write("G21")
@@ -98,7 +98,7 @@ class Scanner():
 
         # flush out the responses. It is unclear why 5 reads are needed for 4 commands, but testing has shown it is needed
         # this is only done when safeMoveQ is being called, otherwise the mover hangs
-        if checkMoveSafety:
+        if checkMoveSafety: # this is probably the thing that causes the delay tim ein the scanner
             for i in range(5):
                 self.serial.read_until()
 

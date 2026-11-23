@@ -11,6 +11,9 @@ import numpy as np
 import time
 import picoscope as picoscope
 import mux
+from scipy.signal import butter, sosfiltfilt
+
+
 
 
 # Function to test collection parameters
@@ -38,6 +41,8 @@ def singlePulseMeasure(params):
 
     # Adjust pulser pulsewidth
     pulser.setFrequency(params['transducerFrequency'])
+    pulser.setPassband((params['pulserPassband']))
+    pulser.setVoltage(params['pulserVoltage'])
 
     # Set the number of half cycles if using tone burst pulser
     if pulser.type == 'tone burst':
@@ -71,7 +76,12 @@ def plotWaveDict(waveDict):
     for voltageKey in waveDict.keys():
         # this isn't the best way to only select voltage keys but it works for now
         if 'voltage' in voltageKey and 'Offset' not in voltageKey:
-            ax.plot(time, waveDict[voltageKey], label = voltageKey)
+            dt = (time[1]-time[0] )* 1e-9
+            f_s = 1 / dt
+            sos = butter(3, [f_s/250, f_s/5], btype="bandpass",
+                         fs=f_s, output="sos")
+            filtered = sosfiltfilt(sos,  waveDict[voltageKey])
+            ax.plot(time,filtered, label = voltageKey)
 
     plt.xlabel('Time (us)')
     plt.ylabel('Voltage (mV)')

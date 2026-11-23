@@ -1,4 +1,4 @@
-from PyQt5.QtGui import QDoubleValidator, QIntValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QDialogButtonBox, QVBoxLayout, QMainWindow, QGridLayout,  QStackedWidget, QWidget, QLabel, QCheckBox, QComboBox, QPushButton, QLineEdit
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -836,7 +836,6 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
 
         return widget
-
 
     #########################################################################
     ################# DIALOG BOXES #########################################

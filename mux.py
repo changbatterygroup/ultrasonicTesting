@@ -54,10 +54,12 @@ class Mux():
     # Reads response and ensures no error codes were given (that is, response == 0 or 1)
     #   Raises an error and closes all switches if an error code occurs
     def writeToMux(self, command: str):
-
+        # print('command:', command, 'utf-8:', (command + '\r').encode('utf-8'))
         self.connection.write((command + '\r').encode('utf-8'))
 
-        response = int(self.connection.read_until('\r'.encode('utf-8')))
+        response = self.connection.read_until('\r'.encode('utf-8'))
+        clean_response = response.replace(b'\x00', b'').strip()
+        response = int(clean_response.decode('utf-8', errors='ignore'))
 
         if response != 0 and response != 1:
             self.clearMux()

@@ -7,7 +7,7 @@
 import serial
 import math
 from msl.loadlib import Client64
-
+import struct
 # Pulser connections are implemented as a class
 # both types of pulsers will have the same function names, but they will behave differently depending on their type
 class Pulser():
@@ -64,18 +64,13 @@ class Pulser():
     # Function adds a carriage return to the command, encodes it to ascii, then sends to the pulser
     # TODO: add verification that message is received
     def writeToPulser(self, command):
-
         if self.type == 'standard':
-
             commandString = command + '\r'
-
             try:
                 self.connection.write(commandString.encode('ascii'))
-
             except serial.SerialException as error:
                 print(f"Error writing command to pulser: {error}")
                 return -1
-
             else:
                 return 0
 
@@ -122,14 +117,14 @@ class Pulser():
             else:
                 print("pulser.setHalfCycles: parameter 'halfCycles' must be an integer between 1 and 32")
 
-    # Turns the pulser on at maximum pulse repitition frequency (PRF)
+    # Turns the pulser on at maximum pulse repetition frequency (PRF)
     # Returns None
     def pulserOn(self):
 
         #TODO: make PRF an experiment parameter
         # Compact PUlser max PRF is 5000 Hz. P# command sets PRF to 10 * #, so P500 = 5000 Hz
         if self.type == 'standard':
-            self.writeToPulser('P500')
+            self.writeToPulser('P100')
 
         # Tone burst max PRF is 1000 Hz
         elif self.type == 'tone burst':
@@ -166,7 +161,7 @@ class Pulser():
         #start with self.writeToPulser('G?'), but then you need to read the value that comes out
         self.writeToPulser('G?')
         getValue = self.connection.read_until('\r'.encode('ascii'))
-        # print(getValue)
+        print(getValue)
         getValue=str(getValue)
         if "G" in getValue:
             getValue=getValue.replace("'",'')
@@ -181,6 +176,88 @@ class Pulser():
         # give an error message if the input is invalid, otherwise run self.writeToPulser('G' + str(gainValue)
         if -120<= gainValue and gainValue<=840:
             self.writeToPulser('G' + str(gainValue))
+        else:
+            print("error: input is invalid")
+
+    def readVoltage(self):
+        #start with self.writeToPulser('G?'), but then you need to read the value that comes out
+        self.writeToPulser('V?')
+        getValue = self.connection.read_until('\r'.encode('ascii'))
+        print(getValue)
+        getValue=str(getValue)
+        if "V" in getValue:
+            getValue=getValue.replace("'",'')
+            getValue=getValue.replace('bV=','')
+            getValue=getValue.replace('\\r','')
+            return int(getValue)
+        else:
+            return 0
+
+    def setVoltage(self, voltageValue : int):
+        #It needs to check that it is between -120 and 840 (the upper and lower limits on the pulser),
+        # give an error message if the input is invalid, otherwise run self.writeToPulser('G' + str(gainValue)
+        if 40<= voltageValue and voltageValue<=300:
+            self.writeToPulser('V' + str(voltageValue));
+        else:
+            print("error: input is invalid")
+
+    def readPassband(self, mode='settings'):
+        '''mode can be 'settings' (integer 0-3) or 'values' (float in MHz)
+        return tuple'''
+        passband=[]
+
+        self.writeToPulser('H?')        #the connection is a binary.
+        getValue = self.connection.read_until(b'\r')
+        # print(getValue)
+        if getValue.startswith(b'H='):
+            passband.append(int(getValue[2:-1].rstrip(b'\xff')))
+
+        self.writeToPulser('L?')
+        getValue = self.connection.read_until(b'\r')
+        # print(getValue)
+        if getValue.startswith(b'L='):
+            passband.append(int(getValue[2:-1].rstrip(b'\xff')))
+
+        if mode=='settings': return passband
+
+        elif mode=='values':
+            self.writeToPulser(f'h{passband[0]}?')        #the connection is a binary.
+            getValue = self.connection.read_until(b'\r')
+            # print(getValue)
+            if getValue.startswith(b'h'):
+                passband.append(float(getValue[3:-1].rstrip(b'MHz')))
+
+            self.writeToPulser(f'l{passband[1]}?')
+            getValue = self.connection.read_until(b'\r')
+            # print(getValue)
+            if getValue.startswith(b'l'):
+                try: passband.append(float(getValue[3:-1].rstrip(b'MHz')))
+                except: passband.append((getValue[3:-1].decode('ascii')))
+
+
+            return passband[-2:]
+
+    def setPassband(self, passband=[0,0]):
+        '''passband: [H,L], where H and L are ints,
+            H:  0=0.6 MHz
+                1=0.8 MHz
+                2=1.8 MHz
+                3=4.8 MHz
+
+            L:  0=5.9 MHz
+                1=6.7 MHz
+                2=7.5 MHz
+                3=8.8 MHz
+                4=18 MHz
+                5=28 MHz
+                6=48 MHz
+                7= All
+        '''
+
+        if passband[0] in range(4) and passband [1] in range(8):
+            self.writeToPulser(f'H{passband[0]}')  # the connection is a binary.
+            self.writeToPulser(f'L{passband[1]}')  # the connection is a binary.
+
         else:
             print("error: input is invalid")
 
@@ -219,7 +296,7 @@ class usbut350Client(Client64):
         return self.request32('setVoltage')
 
 
-#
-# pulser = Pulser('standard', pulserPort='/dev/ttyUSB0')
-# pulser.setGain(200)
-# print(pulser.readGain())
+
+# pulser = Pulser('standard', pulserPort='COM15')
+# pulser.setPassband([0,7])
+# print(pulser.readPassband(mode='values'))

@@ -39,6 +39,8 @@ def repeatPulse(params):
     # Adjust pulser pulsewidth
     pulser.setFrequency(params['transducerFrequency'])
 
+    pulser.setVoltage(params['pulserVoltage'])
+
     # Set the number of half cycles if using tone burst pulser
     if pulser.type == 'tone burst':
         pulser.setHalfCycles(params['halfCycles'])
@@ -177,7 +179,8 @@ def sweepParameters(initParams: dict, sweepParams: dict):
 
         # Adjust pulser pulsewidth
         pulser.setFrequency(input['transducerFrequency'])
-
+        pulser.setVoltage(input['pulserVoltage'])
+        pulser.setPassband(input['pulserPassband']) #TODO: check
         # Set the number of half cycles if using tone burst pulser
         if pulser.type == 'tone burst':
             pulser.setHalfCycles(input['halfCycles'])

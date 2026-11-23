@@ -35,6 +35,8 @@ def runScan(params):
 
     # Adjust pulser pulsewidth
     pulser.setFrequency(params['transducerFrequency'])
+    pulser.setPassband(params['pulserPassband'])
+    pulser.setVoltage(params['pulserVoltage'])
 
     # Set the number of half cycles if using tone burst pulser
     if pulser.type == 'tone burst':
@@ -88,7 +90,7 @@ def runScan(params):
                     file.write('\n')
 
             #Increment position along primary axis
-            scanner.move(params['primaryAxis'], params['primaryAxisStep'])
+            scanner.move(params['primaryAxis'], params['primaryAxisStep']) # see if scanner is faster with safemoveq false
 
 
         # Move back to origin of primary axis
@@ -97,8 +99,8 @@ def runScan(params):
         # Increment position on secondary axis
         scanner.move(params['secondaryAxis'], params['secondaryAxisStep'])
 
-        # Wait 2 seconds for motion to finish
-        time.sleep(2)
+        # Wait 12 seconds for motion to finish #TODO: calculate automatically based on gantry speed and scan width
+        time.sleep(12)
 
     #Return to the start position. Only needs to be done on the secondary axis since the parimary axis resets at the end of the loop
     scanner.move(params['secondaryAxis'], -1 * secondaryAxisSteps * params['secondaryAxisStep'])

@@ -1,8 +1,4 @@
-import ultrasonicScan as scan
-import multiscan
-import scanSetupFunctions as setup
-import repeatPulse
-import gui
+from runExperiment import runExperiment
 
 ###################################################################
 #################  Operating Instructions  ########################
@@ -12,13 +8,12 @@ import gui
 #
 # 2) fill out the relevant parameters for each experiment
 #
-# 3) run this script. On PyCharm, simply pless Shift + F10 or click the green play button at the top right
+# 3) run this script. On PyCharm, simply press Shift + F10 or click the green play button at the top right
 
 
 experimentParams = {
     # If you want to use the GUI, simply set 'gui' : True and the program will guide you through the rest of the setup
-    'gui' : True,
-
+    'gui': False,
     # What do you want to do?
     #'move' = move the transducers
     #'single pulse' = perform a single test pulse
@@ -27,38 +22,45 @@ experimentParams = {
     #'multi scan' = repeat a 2D scan with a set frequency
     #Once you have selected, fill out the values in the parameter list in the correct section
     #NOTE: ONLY CHANGE THE VALUES AFTER THE COLON ON EACH LINE
-    'experiment' : 'single pulse',
+    'experiment': 'single pulse',
 
     #####################################################################
     ################# 'move' parameters #################################
     ### Only applies when 'experiment' == 'move' ########################
     #####################################################################
+    'axis': 'z',  # Axis to move scanner
+    'distance': -10, # Distance in mm to move scanner
 
-    'axis': 'X',                                     # Axis to move scanner
-    'distance': -3,                                  # Distance in mm to move scanner
 
     #################################################################################
     ###################### Ultrasonic Parameters #####################################
     #### Applies to 'single pulse', 'single scan', and 'multi scan' experiments #####
     #################################################################################
 
-    'transducerFrequency' : 5,                    # Central frequency of the ultrasonic transducer, in MHz. Current options are 2.25 or 50
-    'collectionMode': 'transmission',                       #transmission/echo/both
-    'pulserType' : 'standard',                       # Type of pulser. 'standard' is the single wave CompactPulser. 'tone burst' uses the USBUT350 tone burst pulser
-    'measureTime' : 1,                               # Approx measurement time, in us. Note this can be changed by the picoscope time interval based on samples
-                                                     #      Changes to the measureTime will be printed in the console when the script is run
-    'measureDelay' : 26,                           # Approx delay after trigger to start measuring, in us
-    'voltageRange' : 1,                            # Picoscope voltage range for transmission transducer in V. Note this is the total range: 1 V = [-0.5 V, 0.5 V]
-                                                     # Allowed voltages = (0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
+    'transducerFrequency': 2.25,
+    # Central frequency of the ultrasonic transducer, in MHz. Current options are 2.25 or 50
+    'collectionMode': 'echo',  #transmission/echo/both
+    'pulserType': 'standard',  # Type of pulser. 'standard' is the single wave CompactPulser. 'tone burst' uses the USBUT350 tone burst pulser
+    'measureTime': 45, #14,                              #      Changes to the measureTime will be printed in the console when the script is run
+    'measureDelay': 48,  #24,                           # Approx delay after trigger to start measuring, in us
+    'pulserVoltage': 300,  # from 40-300 V #TODO: check
+    'voltageRange': 2,  # Picoscope voltage range in V. Note this is the total range: 1 V = [-0.5 V, 0.5 V]. Allowed voltages = (0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
+
+    'pulserPassband': [2,0], # [H: 0-3, L: 0-7], where H and L are ints,
+                                # H: (0.6, 0.8, 1.8, 4.8)
+                                # L: (5.9, 6.7, 7.5, 8.8, 18, 28, 48, All)
     # todo: separate autoRange and autoGain
-    'autoRange' : False,                            # Set the oscilloscope to rerun measurements where the voltage range of the wave has significantly changed
-                                                     # This enables the tightest possible voltageRange to be used, increasing the accuracy of low intensity signals without cutting off high intensity ones
-                                                     # For transmission measurements, this changes the voltage range on the oscilloscope.
-                                                     # NOTE: this can add significant overhead (2-3x increase in collection time) for each waveform where the range changes
-    'autoRangeEcho': True,                          # Automatically calculate and adjust the offset and gain values. This may add significant measurement time
-    'waves' : 1000,                                  # Number of waves to collect and average
-    'samples': 1000,                                  # Number of data points per wave
-    'halfCycles' : 16,                               # Tone burst pulser only. Number of half-cycles in a tone burst pulse. Minimum 1, maximum 32
+
+    'autoRange': False,
+    # Set the oscilloscope to rerun measurements where the voltage range of the wave has significantly changed
+    # This enables the tightest possible voltageRange to be used, increasing the accuracy of low intensity signals without cutting off high intensity ones
+    # For transmission measurements, this changes the voltage range on the oscilloscope.
+    # NOTE: this can add significant overhead (2-3x increase in collection time) for each waveform where the range changes
+    'autoRangeEcho': False,
+    # Automatically calculate and adjust the offset and gain values. This may add significant measurement time
+    'waves': 1000,  # Number of waves to collect and average
+    'samples': 1000,  # Number of data points per wave
+    'halfCycles': 2,  # Tone burst pulser only. Number of half-cycles in a tone burst pulse. Minimum 1, maximum 32
 
     ##############################################################################################
     ######################## Advanced Options ####################################################
@@ -66,92 +68,105 @@ experimentParams = {
     ##############################################################################################
 
     #todo: add gain option here?
-    'multiplexer' : True,                            # Will the multiplexer be used in the measurement
-                                                    # If set to False, all other parameters in this section are ignored
-                                                    # and the system is assumed to be wired without the multiplexer (trigger to Channel B, receiver or RF data to Channel A)
+    'multiplexer': False,  # Will the multiplexer be used in the measurement
+    # If set to False, all other parameters in this section are ignored
+    # and the system is assumed to be wired without the multiplexer (trigger to Channel B, receiver or RF data to Channel A)
 
-    'collectionDirection' : 'forward',              # Specifies the channels used for the transmitting and receiving transducers
-                                                    # 'forward' pulses on Channel A and (for collectionMode = transmision or both) collects on Channel B
-                                                    # 'reverse' pulses on Channel B and collects on Channel A
-                                                    # 'both' repeats the measurement in both directions
-    'voltageOffsetForward' : 0.0,                   # Voltage offset applied to pulse-echo measurements to fix large baseline added by pulser output
-    'voltageOffsetReverse': 0.0,                    #     Voltage offsets are directional since 1) echo baseline depends heavily on delay time and 2) delay time
-                                                    #     is a function of sample placement and could vary widely between the forward and reverse transducer
-    'gainForward' : 500,                            # Gain setting on pulser, used to maximize the signal of pulse-echo measurements
-    'gainReverse' : 500,                            #  similar to voltageOffsets, these can be set to different values for the forward and reverse directions
+    'collectionDirection': 'both',  # Specifies the channels used for the transmitting and receiving transducers
+    # 'forward' pulses on Channel A and (for collectionMode = transmision or both) collects on Channel B
+    # 'reverse' pulses on Channel B and collects on Channel A
+    # 'both' repeats the measurement in both directions
+    'voltageOffsetForward': 0.0,
+    # Voltage offset applied to pulse-echo measurements to fix large baseline added by pulser output
+    'voltageOffsetReverse': 0.0,
+    #     Voltage offsets are directional since 1) echo baseline depends heavily on delay time and 2) delay time
+    #     is a function of sample placement and could vary widely between the forward and reverse transducer
+    'gainForward': 500,  # Gain setting on pulser, used to maximize the signal of pulse-echo measurements
+    'gainReverse': 500,
+    #  similar to voltageOffsets, these can be set to different values for the forward and reverse directions
     #todo: add pulse module and picoscope module, convert existing address params to just switch numbers
     # todo: will need to add code to pulse.init to build the addresses from inputs
     # advantage of this new method is safety - you cannot specify unsafe address combos
-    'picoModule' : 1,
-    'pulseModule' : 0,
+    'picoModule': 1,  # Row of the C port on the multiplexer connected to the Picoscope Channel A
+    'pulseModule': 0,  # Row of the C port on the multiplexer connect to the pulser TX output
 
-    'rfSwitch': 2,                            # Multiplexer switch number for all of the relevant channels
-    't0PulseSwitch': 0,                       #
-    't0ReceiveSwitch': 0,                     #   NOTE: all data channels (RF, transducer receive) should be on the same module as the picoscope
-    't1PulseSwitch': 1,                       #         and all pulsing transducer channels should be on the same module as the TX (pulser output)
-    't1ReceiveSwitch': 1,                     #   If you are not using a particular channel, using None as the value will
-                                                    #   will enable error checking that the channels used are compatible with the chosen
-                                                    #   collectionMode and collectionDirection
+    'rfSwitch': 2,  # Column of the port on the picoModule row connected to the RF output of the pulser
+    't0PulseSwitch': 3,  # Column of the port on pulseModule row connected to transducer 0
+    't0ReceiveSwitch': 3, #t0 is a problem
+    #   NOTE: all data channels (RF, transducer receive) should be on the same module as the picoscope
+    't1PulseSwitch': 0,
+    #         and all pulsing transducer channels should be on the same module as the TX (pulser output)
+    't1ReceiveSwitch': 0,  #   If you are not using a particular channel, using None as the value will
+    #   will enable error checking that the channels used are compatible with the chosen
+    #   collectionMode and collectionDirection
 
     ################################################################################
     ########################### Saving Names ##########################################
     ##### Applies to 'single scan', 'multi scan', and 'repeat pulse' experiment ####
     ################################################################################
 
-    'experimentFolder': '/home/rpi-001/acoustics/',                     # Name of folder to dump data
-    'experimentName' : 'autorangeTest2',                  # File name for single scan and repeat pulse experiment. Will be appended with .json or .sqlite3
-    'experimentBaseName' : 'test_multiscan_data',   # Base filename for multi scan experiment, which will have the scan # appended to it
-    'saveFormat' : 'sqlite',                        # Format to save data. Options are sqlite or json. Sqlite is highly recommended
-    'postAnalysis' : False,                         # Option to run simple post-scan analysis and plotting: calculate max-min, STA/LTA, and Hilbert Envelope, save plots of data and dump CSVs of the raw metrics
-                                                    # NOTE: this is only available if for single or multi scan experiments with saveFormat = 'sqlite'
+    'experimentFolder': 'C://Users//changlab//Desktop//UT Data//FT//',                     # Name of folder to dump data "C:\Users\changlab\Desktop\UT Data"
+    # 'experimentFolder': 'C://Users//changlab//Desktop//UT Data//temperature testing//',
+    # Name of folder to dump data "C:\Users\changlab\Desktop\UT Data"
+    'experimentName' : '101926_singrollwtape_scan_1mm_front_lowerhalfofprismatic',                  # File name for single scan and repeat pulse experiment. Will be appended with .json or .sqlite3
+    # 'experimentName': 'test_water_resonance_0.1',
+    # File name for single scan and repeat pulse experiment. Will be appended with .json or .sqlite3
+    'experimentBaseName': 'test_multiscan_data',
+    # Base filename for multi scan experiment, which will have the scan # appended to it
+    'saveFormat': 'sqlite',  # Format to save data. Options are sqlite or json. Sqlite is highly recommended
+    'postAnalysis': False,
+    # Option to run simple post-scan analysis and plotting: calculate max-min, STA/LTA, and Hilbert Envelope, save plots of data and dump CSVs of the raw metrics
+    # NOTE: this is only available if for single or multi scan experiments with saveFormat = 'sqlite'
 
     ################################################################################
     ####################### Scan Parameters ########################################
     ####### Applies to 'single scan' and 'multi scan' experiment ###################
     ################################################################################
 
-    'primaryAxis' : 'X',                            # First axis of motion for the scan. 'X' is recommended
-    'secondaryAxis' : 'Z',                          # Second axis of motion for the scan. 'Z' is recommended
-    'primaryAxisRange' : 20,                         # Distance in mm to scan on the primary axis
-    'primaryAxisStep' : 5,                        # Distance in mm between each scan on the primary axis
-    'secondaryAxisRange' : 20,                       # Distance in mm to scan on the secondary axis
-    'secondaryAxisStep' : -5,                     # Distance in mm between each scan on the secondary axis
+    'primaryAxis': 'X',  # First axis of motion for the scan. 'X' is recommended
+    'secondaryAxis': 'Z',  # Second axis of motion for the scan. 'Z' is recommended
+    'primaryAxisRange': 150,  # Distance in mm to scan on the primary axis
+    'primaryAxisStep': 1,  # Distance in mm between each scan on the primary axis
+    'secondaryAxisRange': 20,  # Distance in mm to scan on the secondary axis
+    'secondaryAxisStep': -1,  # Distance in mm between each scan on the secondary axis
 
     ################################################################################
     ################ Repeat Measure Parameters #####################################
     ###### Applies to 'multi scan' and 'repeat pulse' experiments ##################
     ################################################################################
 
-    'scanInterval' : 3600,                          # For multi scans: Minimum time between start of scans, in seconds.
-    'numberOfScans' : 10,                           # For multi scans: Number of times to run the scan
-    'pulseInterval' : 1,                            # For repeat pulse: Minimum time between pulse collection, in seconds
-    'experimentTime' : 5,                           # For repeat pulse: Time to collect data, in seconds
+    'scanInterval': 1,  # For multi scans: Minimum time between start of scans, in seconds.
+    'numberOfScans': 1,  # For multi scans: Number of times to run the scan
+    'pulseInterval': 1,  # For repeat pulse: Minimum time between pulse collection, in seconds
+    'experimentTime': 10,  # For repeat pulse: Time to collect data, in seconds
 
     #################################################################################
     ########################### Sweep Parameters ####################################
     ##################### Applies to 'sweep' experiments ############################
     #################################################################################
 
-    'sweepParams' : {                           # Dict which defines the parameters to sweep over
-        'transducerFrequency' : [0.5 + i/10 for i in range(50)]           #   Keys must be other keys of the input params dict
-    },                                          #   Values must be lists of possible values to try for that parameter
+    'sweepParams': {  # Dict which defines the parameters to sweep over
+        'halfCycles': [i for i in range(33)]  #   Keys must be other keys of the input params dict
+    },  #   Values must be lists of possible values to try for that parameter
 
     #################################################################################
     ########################## Port Names ###########################################
     ######### Only change if instrument USB ports are changed! ######################
     #################################################################################
-    'pulserPort' : '/dev/ttyUSB0',                          # Ultratek pulser port name
-    'scannerPort' : '/dev/ttyUSB1',                         # Ender port name
-    'dllFile' : 'C://USUTSDK//USBUTSDKC//USBUT.dll',        # Only used for 'pulserType' : 'tone burst'. Location of USBUT350 pulser SDK
-    'multiplexerPort' : '/dev/ttyUSB0',                     # Only used if 'multiplexer': True
+    'pulserPort': 'COM15',  # Ultratek pulser port name
+    'scannerPort': 'COM6',  # Ender port name
+    'dllFile': 'C://USUTSDK//USBUTSDKC//USBUT.dll',
+    # Only used for 'pulserType' : 'tone burst'. Location of USBUT350 pulser SDK
+    'multiplexerPort': 'COM19',  # Only used if 'multiplexer': True
 
     ##################################################################################
     ######################### Scanner Size Parameters ################################
     ##################################################################################
-    'transducerHolderHeight' : 50,                            # Z-direction length of the transducer holder, in mm
-    'scannerMaxDimensions' : (220, 220, 240)                # Maximum dimensions of the scanner.
-                                                            # For the Ender-3 or other 3D printers this is the build volume
+    'transducerHolderHeight': 30,  # Z-direction length of the transducer holder, in mm
+    'scannerMaxDimensions': (220, 220, 240)  # Maximum dimensions of the scanner.
+    # For the Ender-3 or other 3D printers this is the build volume
 }
+
 
 ##########################################################################################
 
@@ -167,45 +182,5 @@ experimentParams = {
 ##########################################################################################
 
 ##########################################################################################
-
-
-# Function to choose experiment function based on parameters
-def runExperiment(params : dict):
-
-    if params['gui']:
-        gui.startGUI(params)
-
-    else:
-        # get the experiment from the input
-        experiment = params['experiment']
-
-        #run the appropriate experiment function
-        # 'move' = move the transducers
-        # 'single pulse' = perform a single test pulse
-        # 'single scan' = perform a single 2D scan
-        # 'multi scan' = repeat a 2D scan with a set frequency
-        match experiment:
-            case 'move':
-                setup.moveScanner(params)
-
-            case 'single pulse':
-                setup.singlePulseMeasure(params)
-
-            case 'repeat pulse':
-                repeatPulse.repeatPulse(params)
-
-            case 'sweep':
-                repeatPulse.sweepParameters(params, params['sweepParams'])
-
-            case 'single scan':
-                scan.runScan(params)
-
-            case 'multi scan':
-                multiscan.multiscan(params)
-
-            #Match case where no matching expiment is input
-            case _:
-                print("No experiment matches input. Check the value of the 'experiment' parameter and ensure it is a valid experiment")
-                print("Valid experiments are: 'move', 'single pulse', 'single scan', and 'multi scan'")
 
 runExperiment(experimentParams)
